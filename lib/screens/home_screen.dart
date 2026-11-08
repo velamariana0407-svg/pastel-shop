@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../models/product.dart';
 import '../services/product_service.dart';
+import '../services/product_store.dart';
 import '../widgets/product_card.dart';
+import 'product_form_screen.dart';
 
 /// Palet pastel biru khusus HomeScreen (disesuaikan tanpa variabel unused)
 class _Blue {
@@ -28,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _focus = FocusNode();
 
   List<Product> _products = [];
+  List<Product> _fetched = []; // hasil asli dari server (sebelum perubahan lokal)
   bool _loading = true;
   String? _error;
   String _activeQuery = '';
@@ -35,11 +38,13 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    ProductStore.instance.addListener(_onStoreChanged);
     _load();
   }
 
   @override
   void dispose() {
+    ProductStore.instance.removeListener(_onStoreChanged);
     _controller.dispose();
     _focus.dispose();
     super.dispose();
@@ -54,8 +59,10 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final result = await _service.fetchProducts(query: query);
       if (!mounted) return;
+      ProductStore.instance.registerFetched(result);
       setState(() {
-        _products = result;
+        _fetched = result;
+        _products = ProductStore.instance.apply(result, query);
         _loading = false;
       });
     } catch (e) {
@@ -78,10 +85,45 @@ class _HomeScreenState extends State<HomeScreen> {
     _load();
   }
 
+  /// Dipanggil saat ada produk ditambah / diubah / dihapus.
+  void _onStoreChanged() {
+    if (!mounted) return;
+    setState(() {
+      _products = ProductStore.instance.apply(_fetched, _activeQuery);
+    });
+  }
+
+  Future<void> _openCreate() async {
+    final created = await Navigator.push<Product>(
+      context,
+      MaterialPageRoute(builder: (_) => const ProductFormScreen()),
+    );
+    if (created == null || !mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: _Blue.ink,
+          behavior: SnackBarBehavior.floating,
+          content: Text('${created.title} berhasil ditambahkan'),
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _Blue.bg,
+      floatingActionButton: (_loading || _error != null)
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _openCreate,
+              backgroundColor: _Blue.deep,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Tambah',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,7 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.white,
       onRefresh: () => _load(query: _activeQuery),
       child: GridView.builder(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 88), // ruang untuk tombol Tambah
         physics: const AlwaysScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,

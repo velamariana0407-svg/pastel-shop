@@ -1,69 +1,84 @@
-# 🛍️ Pastel Shop
+# Pastel Shop 🛍️
 
-Aplikasi katalog produk mobile (Flutter) bertema warna pastel. Data produk diambil dari API [DummyJSON Products](https://dummyjson.com/docs/products).
+Aplikasi mobile katalog produk bertema **biru pastel**, dibuat dengan **Flutter** dan berjalan langsung di handphone (bukan di browser). Data diambil dari API [DummyJSON Products](https://dummyjson.com/docs/products).
 
 ## 🎥 Video Penjelasan & Demo
 
-**Link YouTube:** _(isi dengan link video kamu, permission Public, wajah terlihat)_
+**YouTube:** https://youtu.be/95lxPkgH3EQ?si=zqCCv0uYpvgYcJXH
 
-## ✨ Fitur
+## 👤 Identitas
 
-- **Halaman depan**: menampilkan seluruh produk (194 item) dalam grid 2 kolom dengan kartu berwarna pastel.
-- **Halaman detail produk**: galeri gambar (geser), kategori, brand, rating, harga + diskon, deskripsi, stok, pengiriman, garansi, kebijakan retur, dan ulasan. Dibuka dengan menekan produk di halaman depan.
-- **Search fungsional**: ketik kata kunci lalu tekan tombol search (atau enter di keyboard). Mencari ke endpoint `/products/search`. Ada tombol ✕ untuk menghapus pencarian.
-- State loading, error (dengan tombol coba lagi), dan hasil kosong.
-- Pull-to-refresh di halaman depan.
+- **Nama:** Vela Serli Mariana
+- **NIM:** 240102128
+- **Kelas:** IF24B
 
-## 🎨 Skema Warna Pastel
+## Fitur
 
-| Warna | Hex |
-|-------|-----|
-| Pink | `#FAD4E1` |
-| Mint | `#CDF0DD` |
-| Sky | `#C6E2FB` |
-| Peach | `#FFDCC4` |
-| Lavender | `#DDD2F7` |
-| Yellow | `#FFF1B8` |
-| Background (krem) | `#FFF8F3` |
-| Aksen (ungu pastel) | `#B39DDB` |
+- **Halaman depan**: seluruh produk (194 produk) dalam grid 2 kolom dengan skema warna biru pastel.
+- **Halaman detail produk**: galeri gambar, harga dan diskon, rating, stok, info pengiriman/garansi, dan ulasan. Dibuka dengan mengetuk produk di halaman depan.
+- **Search fungsional**: pencarian ke server (`/products/search`) lewat tombol search atau tombol enter di keyboard, lengkap dengan tombol hapus (X).
+- **CRUD lengkap**: **tambah**, **ubah**, dan **hapus** produk (lihat tabel di bawah).
+- Pull-to-refresh, tampilan loading, tampilan error dengan tombol "Coba lagi", dan validasi form.
 
-Palet ada di `lib/theme/app_colors.dart`.
+## CRUD
 
-## 🔌 API yang Dipakai
+| Aksi | Cara memakai | Endpoint |
+|---|---|---|
+| **Tambah** (Create) | Tombol **+ Tambah** di halaman depan, isi form, lalu simpan | `POST /products/add` |
+| **Lihat** (Read) | Daftar produk, halaman detail, search, dan tarik layar ke bawah untuk refresh | `GET /products?limit=0` dan `GET /products/search?q=` |
+| **Ubah** (Update) | Buka detail produk, ketuk ikon **pensil** di pojok kanan atas, ubah data, lalu simpan | `PUT /products/{id}` |
+| **Hapus** (Delete) | Buka detail produk, ketuk ikon **tong sampah** di pojok kanan atas, lalu konfirmasi | `DELETE /products/{id}` |
 
-- `GET https://dummyjson.com/products?limit=0` — semua produk
-- `GET https://dummyjson.com/products/search?q=<kata>&limit=0` — pencarian
+> **Catatan penting:** DummyJSON hanya **mensimulasikan** operasi tambah, ubah, dan hapus. Server membalas sukses, tetapi data aslinya tidak benar-benar berubah.
+> Karena itu, setelah server membalas sukses, perubahan dicatat di aplikasi (`ProductStore`) dan diterapkan ke setiap hasil `GET`, termasuk saat search dan refresh. Perubahan **hilang saat aplikasi ditutup dan dibuka lagi**.
+> Produk yang dibuat lewat aplikasi tidak ada di server. Saat produk itu diubah atau dihapus, aplikasi tidak memanggil server (akan 404), cukup memperbarui datanya di aplikasi.
 
-## 🚀 Cara Menjalankan (di handphone)
-
-Prasyarat: [Flutter SDK](https://docs.flutter.dev/get-started/install) terpasang dan HP Android dengan **USB debugging** aktif (atau emulator Android).
-
-```bash
-git clone <link-repo-ini>
-cd pastel_shop
-
-# membuat folder android/ios (hanya sekali)
-flutter create . --project-name pastel_shop
-
-flutter pub get
-flutter devices        # pastikan HP terdeteksi
-flutter run            # jalankan di HP
-```
-
-> Jika aplikasi dibuild **release** (`flutter build apk`), pastikan izin internet ada di
-> `android/app/src/main/AndroidManifest.xml`:
-> `<uses-permission android:name="android.permission.INTERNET"/>`
-
-## 📁 Struktur Project
+## Struktur Proyek
 
 ```
 lib/
 ├── main.dart
-├── models/product.dart
-├── services/product_service.dart
+├── models/
+│   └── product.dart               # model data (+ toJson untuk POST/PUT)
+├── services/
+│   ├── product_service.dart       # semua pemanggilan API (GET, POST, PUT, DELETE)
+│   └── product_store.dart         # menyimpan perubahan tambah/ubah/hapus selama app berjalan
 ├── screens/
-│   ├── home_screen.dart
-│   └── detail_screen.dart
-├── widgets/product_card.dart
-└── theme/app_colors.dart
+│   ├── home_screen.dart           # halaman depan: grid produk, search, tombol Tambah
+│   ├── detail_screen.dart         # halaman detail: tombol Ubah dan Hapus
+│   └── product_form_screen.dart   # form tambah / ubah produk
+├── widgets/
+│   └── product_card.dart          # kartu produk
+└── theme/
+    └── app_colors.dart
+```
+
+## Teknologi
+
+- Flutter (Dart)
+- Package [`http`](https://pub.dev/packages/http) untuk memanggil REST API
+- API: [DummyJSON](https://dummyjson.com/docs/products)
+
+## Cara Menjalankan (di HP)
+
+1. Pastikan Flutter sudah terpasang (`flutter doctor`).
+2. Aktifkan **USB debugging** di HP Android, lalu colok ke laptop.
+3. Jalankan perintah berikut di folder proyek:
+
+```bash
+flutter pub get
+flutter devices     # pastikan HP terdeteksi
+flutter run         # pilih HP, bukan Chrome/Windows
+```
+
+Pastikan `android/app/src/main/AndroidManifest.xml` memuat izin internet:
+
+```xml
+<uses-permission android:name="android.permission.INTERNET"/>
+```
+
+### Build APK
+
+```bash
+flutter build apk --release
 ```

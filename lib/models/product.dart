@@ -37,6 +37,10 @@ class Product {
   final String returnPolicy;
   final List<Review> reviews;
 
+  /// true = produk dibuat lewat aplikasi (tidak ada di server DummyJSON),
+  /// jadi tidak perlu memanggil PUT/DELETE ke server (akan 404).
+  final bool isLocal;
+
   Product({
     required this.id,
     required this.title,
@@ -54,12 +58,31 @@ class Product {
     required this.warrantyInformation,
     required this.returnPolicy,
     required this.reviews,
+    this.isLocal = false,
   });
 
   /// Harga setelah diskon.
   double get finalPrice => price * (1 - discountPercentage / 100);
 
   bool get hasDiscount => discountPercentage > 0;
+
+  /// Body JSON untuk POST (tambah) dan PUT (ubah).
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'description': description,
+        'category': category,
+        'price': price,
+        'discountPercentage': discountPercentage,
+        'rating': rating,
+        'stock': stock,
+        'brand': brand,
+        'thumbnail': thumbnail,
+        'images': images,
+        'availabilityStatus': availabilityStatus,
+        'shippingInformation': shippingInformation,
+        'warrantyInformation': warrantyInformation,
+        'returnPolicy': returnPolicy,
+      };
 
   factory Product.fromJson(Map<String, dynamic> json) {
     final images = (json['images'] as List?)?.cast<String>() ?? <String>[];

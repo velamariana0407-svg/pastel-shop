@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../models/product.dart';
+import '../services/product_service.dart';
+import '../services/product_store.dart';
+import 'product_form_screen.dart';
 
 /// Palet pastel biru khusus halaman detail
 class _Blue {
@@ -13,6 +16,7 @@ class _Blue {
   static const ink = Color(0xFF1F3A57); // teks utama
   static const inkSoft = Color(0xFF6A839E); // teks sekunder
   static const star = Color(0xFFF6C453); // bintang rating
+  static const danger = Color(0xFFE05A5A); // aksi hapus
 }
 
 class DetailScreen extends StatefulWidget {
@@ -28,8 +32,89 @@ class DetailScreen extends StatefulWidget {
 class _DetailScreenState extends State<DetailScreen> {
   final _pageController = PageController();
   int _page = 0;
+  bool _busy = false;
+  late Product _product;
 
-  Product get p => widget.product;
+  Product get p => _product;
+
+  @override
+  void initState() {
+    super.initState();
+    _product = widget.product;
+  }
+
+  SnackBar _snack(String text, {bool error = false}) => SnackBar(
+        backgroundColor: error ? _Blue.danger : _Blue.ink,
+        behavior: SnackBarBehavior.floating,
+        content: Text(text),
+      );
+
+  // ---------- UBAH ----------
+  Future<void> _edit() async {
+    if (_busy) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final updated = await Navigator.push<Product>(
+      context,
+      MaterialPageRoute(builder: (_) => ProductFormScreen(product: _product)),
+    );
+    if (updated == null || !mounted) return;
+    setState(() {
+      _product = updated;
+      _page = 0;
+    });
+    if (_pageController.hasClients) _pageController.jumpToPage(0);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(_snack('Perubahan berhasil disimpan'));
+  }
+
+  // ---------- HAPUS ----------
+  Future<void> _confirmDelete() async {
+    if (_busy) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('Hapus produk?',
+            style: TextStyle(fontWeight: FontWeight.w800, color: _Blue.ink)),
+        content: Text('"${_product.title}" akan dihapus.',
+            style: const TextStyle(color: _Blue.inkSoft)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal', style: TextStyle(color: _Blue.inkSoft)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus',
+                style: TextStyle(
+                    color: _Blue.danger, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final title = _product.title;
+    setState(() => _busy = true);
+    try {
+      await ProductService().deleteProduct(_product);
+      ProductStore.instance.remove(_product);
+      navigator.pop();
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(_snack('$title berhasil dihapus'));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      messenger.showSnackBar(
+        _snack(e.toString().replaceFirst('Exception: ', ''), error: true),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -148,10 +233,39 @@ class _DetailScreenState extends State<DetailScreen> {
                 onTap: () => Navigator.of(context).pop(),
               ),
             ),
+            // Tombol ubah & hapus
+            Positioned(
+              right: 16,
+              top: 8,
+              child: _busy
+                  ? Container(
+                      width: 38,
+                      height: 38,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const CircularProgressIndicator(
+                          strokeWidth: 2, color: _Blue.deep),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _CircleButton(icon: Icons.edit_rounded, onTap: _edit),
+                        const SizedBox(width: 8),
+                        _CircleButton(
+                          icon: Icons.delete_outline_rounded,
+                          color: _Blue.danger,
+                          onTap: _confirmDelete,
+                        ),
+                      ],
+                    ),
+            ),
             if (p.images.length > 1)
               Positioned(
                 right: 16,
-                top: 14,
+                bottom: 8,
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -516,7 +630,9 @@ class _Chip extends StatelessWidget {
 class _CircleButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  const _CircleButton({required this.icon, required this.onTap});
+  final Color color;
+  const _CircleButton(
+      {required this.icon, required this.onTap, this.color = _Blue.ink});
 
   @override
   Widget build(BuildContext context) => Material(
@@ -527,7 +643,7 @@ class _CircleButton extends StatelessWidget {
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child: Icon(icon, size: 18, color: _Blue.ink),
+            child: Icon(icon, size: 18, color: color),
           ),
         ),
       );

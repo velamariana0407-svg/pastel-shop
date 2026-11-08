@@ -26,4 +26,53 @@ class ProductService {
         .map((e) => Product.fromJson(e as Map<String, dynamic>))
         .toList();
   }
+
+  // ------------------------------------------------------------------
+  // CREATE / UPDATE / DELETE
+  // ------------------------------------------------------------------
+  static const _headers = {'Content-Type': 'application/json'};
+
+  /// Membungkus request: kalau gagal konek / timeout, lempar pesan yang ramah.
+  Future<http.Response> _send(Future<http.Response> request) async {
+    try {
+      return await request.timeout(const Duration(seconds: 20));
+    } catch (_) {
+      throw Exception('Tidak dapat terhubung ke server. Periksa koneksi internet.');
+    }
+  }
+
+  /// POST /products/add
+  Future<void> createProduct(Product product) async {
+    final res = await _send(http.post(
+      Uri.parse('$_base/products/add'),
+      headers: _headers,
+      body: jsonEncode(product.toJson()),
+    ));
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception('Gagal menambah produk (kode ${res.statusCode})');
+    }
+  }
+
+  /// PUT /products/{id}
+  Future<void> updateProduct(Product product) async {
+    // Produk buatan aplikasi tidak ada di server -> cukup diubah di aplikasi.
+    if (product.isLocal) return;
+    final res = await _send(http.put(
+      Uri.parse('$_base/products/${product.id}'),
+      headers: _headers,
+      body: jsonEncode(product.toJson()),
+    ));
+    if (res.statusCode != 200) {
+      throw Exception('Gagal mengubah produk (kode ${res.statusCode})');
+    }
+  }
+
+  /// DELETE /products/{id}
+  Future<void> deleteProduct(Product product) async {
+    if (product.isLocal) return;
+    final res = await _send(http.delete(Uri.parse('$_base/products/${product.id}')));
+    if (res.statusCode != 200) {
+      throw Exception('Gagal menghapus produk (kode ${res.statusCode})');
+    }
+  }
 }
